@@ -5,9 +5,18 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
-const envPath = resolve(process.cwd(), '.env');
-if (existsSync(envPath) && typeof (process as any).loadEnvFile === 'function') {
-  (process as any).loadEnvFile(envPath);
+// Cargar .env tanto si se ejecuta desde la raíz como desde dist/ o subdirectorios
+const possibleEnvPaths = [
+  resolve(process.cwd(), '.env'),
+  resolve(__dirname, '../.env'),
+  resolve(__dirname, '../../.env'),
+];
+
+for (const envPath of possibleEnvPaths) {
+  if (existsSync(envPath) && typeof (process as any).loadEnvFile === 'function') {
+    (process as any).loadEnvFile(envPath);
+    break;
+  }
 }
 
 async function bootstrap() {
