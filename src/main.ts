@@ -1,7 +1,14 @@
+import { existsSync } from 'fs';
+import { resolve } from 'path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+
+const envPath = resolve(process.cwd(), '.env');
+if (existsSync(envPath) && typeof (process as any).loadEnvFile === 'function') {
+  (process as any).loadEnvFile(envPath);
+}
 
 async function bootstrap() {
   const logger = new Logger('Los5Mosqueteros');
