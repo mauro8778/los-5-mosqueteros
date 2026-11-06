@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface ApplicantProfile {
   homeType: string;
@@ -28,18 +28,17 @@ export interface AiEvaluationResult {
 @Injectable()
 export class AiMatchService {
   private readonly logger = new Logger(AiMatchService.name);
-  private ai: GoogleGenAI | null = null;
+  private genAI: GoogleGenerativeAI | null = null;
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
-      this.ai = new GoogleGenAI({ apiKey });
+      this.genAI = new GoogleGenerativeAI(apiKey);
     }
   }
 
   async evaluateCompatibility(applicant: ApplicantProfile, pet: PetProfile): Promise<AiEvaluationResult> {
-    // Si la API key está configurada, evaluamos con Gemini 2.0 Flash
-    if (this.ai) {
+    if (this.genAI) {
       try {
         const prompt = `
 Eres un etólogo y experto en bienestar animal del refugio "Los 5 Mosqueteros".
@@ -67,12 +66,10 @@ Devuelve ÚNICAMENTE un objeto JSON válido con este formato:
   "isRecommended": <true o false>
 }
 `;
-        const response = await this.ai.models.generateContent({
-          model: 'gemini-2.0-flash',
-          contents: prompt,
-        });
+        const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
 
-        const text = response.text || '';
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
@@ -87,26 +84,22 @@ Devuelve ÚNICAMENTE un objeto JSON válido con este formato:
       }
     }
 
-    // Motor determinístico local de compatibilidad
     return this.calculateLocalMatch(applicant, pet);
   }
 
   private calculateLocalMatch(applicant: ApplicantProfile, pet: PetProfile): AiEvaluationResult {
     let score = 70;
 
-    // Horas en soledad
     if (applicant.hoursAlonePerDay > 8) score -= 25;
     else if (applicant.hoursAlonePerDay > 5) score -= 10;
     else score += 10;
 
-    // Espacio vs Tamaño & Energía
     if (pet.energyLevel === 'HIGH' && !applicant.hasYard) score -= 20;
     if (pet.energyLevel === 'HIGH' && applicant.hasYard) score += 15;
     if (pet.size === 'LARGE' && applicant.homeType.toLowerCase().includes('departamento') && !applicant.hasYard) {
       score -= 15;
     }
 
-    // Experiencia
     if (applicant.experienceWithPets.length > 20) score += 10;
 
     const finalScore = Math.min(100, Math.max(10, score));
