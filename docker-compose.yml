@@ -28,11 +28,11 @@ services:
     volumes:
       - mosqueteros_redisdata:/data
 
-  api:
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: mosqueteros_api
+    container_name: mosqueteros_backend
     restart: unless-stopped
     depends_on:
       postgres:
