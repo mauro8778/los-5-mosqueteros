@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SHELTER_VOLUNTEER
+  VET
+  ADOPTER
+}
+
+enum Species {
+  DOG
+  CAT
+  OTHER
+}
+
+enum PetSize {
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+enum PetStatus {
+  AVAILABLE
+  PENDING_ADOPTION
+  ADOPTED
+  LOST
+  FOUND
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  phone     String?
+  role      Role     @default(ADOPTER)
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications AdoptionApplication[]
+  orders       Order[]
+  appointments VetAppointment[]
+  sentMessages ChatMessage[]         @relation("SentMessages")
+}
+
+model Pet {
+  id           String    @id @default(uuid())
+  name         String
+  species      Species
+  breed        String?
+  ageMonths    Int?
+  size         PetSize   @default(MEDIUM)
+  gender       String    // "MALE" | "FEMALE"
+  description  String
+  photos       String[]  // Array of image URLs
+  status       PetStatus @default(AVAILABLE)
+  latitude     Float?
+  longitude    Float?
+  isVaccinated Boolean   @default(false)
+  isNeutered   Boolean   @default(false)
+  energyLevel  String?   // "LOW" | "MEDIUM" | "HIGH"
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  applications AdoptionApplication[]
+  appointments VetAppointment[]
+}
+
+model AdoptionApplication {
+  id                   String            @id @default(uuid())
+  petId                String
+  userId               String
+  homeType             String            // House, Apartment
+  hasYard              Boolean
+  hoursAlonePerDay     Int
+  hasOtherPets         Boolean
+  childrenAtHome       Boolean
+  experienceWithPets   String
+  additionalNotes      String?
+  aiCompatibilityScore Int?              // 0 to 100
+  aiAnalysisReport     String?           // Gemini generated report
+  status               ApplicationStatus @default(SUBMITTED)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  pet  Pet  @relation(fields: [petId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  stock       Int         @default(0)
+  category    String
+  imageUrl    String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id                   String      @id @default(uuid())
+  userId               String
+  totalAmount          Float
+  status               OrderStatus @default(PENDING)
+  paymentProviderId    String?     // Mercado Pago Payment ID
+  preferenceId         String?     // Mercado Pago Preference ID
+  shippingAddress      String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  user  User        @relation(fields: [userId], references: [id])
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Float
+  createdAt DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model DonationCampaign {
+  id           String   @id @default(uuid())
+  title        String
+  description  String
+  targetAmount Float
+  raisedAmount Float    @default(0)
+  imageUrl     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model VetAppointment {
+  id              String            @id @default(uuid())
+  userId          String
+  petId           String?
+  petName         String
+  reason          String
+  appointmentDate DateTime
+  status          AppointmentStatus @default(PENDING)
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  pet  Pet? @relation(fields: [petId], references: [id])
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  message    String
+  createdAt  DateTime @default(now())
+
+  sender User @relation("SentMessages", fields: [senderId], references: [id])
+}

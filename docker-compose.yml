@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mosqueteros_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mosqueterospassword
+      POSTGRES_DB: mosqueteros_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - mosqueteros_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mosqueteros_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - mosqueteros_redisdata:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mosqueteros_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://postgres:mosqueterospassword@postgres:5432/mosqueteros_db?schema=public"
+      JWT_SECRET: "mosqueteros_ultra_secure_jwt_secret_2026"
+      REDIS_HOST: "redis"
+      REDIS_PORT: 6379
+      GEMINI_API_KEY: ""
+      MERCADOPAGO_ACCESS_TOKEN: ""
+
+volumes:
+  mosqueteros_pgdata:
+  mosqueteros_redisdata:
