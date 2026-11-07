@@ -66,7 +66,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con este formato:
   "isRecommended": <true o false>
 }
 `;
-        const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = this.genAI.getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
         const result = await model.generateContent(prompt);
         const text = result.response.text();
 

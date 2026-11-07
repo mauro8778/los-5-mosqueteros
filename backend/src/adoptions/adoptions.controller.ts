@@ -13,6 +13,15 @@ import { ApplicationStatus, Role } from '@prisma/client';
 export class AdoptionsController {
   constructor(private adoptionsService: AdoptionsService) {}
 
+  @Post(':petId/evaluate')
+  @ApiOperation({ summary: 'Evaluar compatibilidad de adopción con IA sin requerir sesión obligatoria' })
+  async evaluate(
+    @Param('petId') petId: string,
+    @Body() dto: CreateApplicationDto,
+  ) {
+    return this.adoptionsService.evaluateCompatibilityOnly(petId, dto);
+  }
+
   @Post(':petId/apply')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

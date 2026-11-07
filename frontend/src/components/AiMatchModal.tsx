@@ -19,47 +19,59 @@ export const AiMatchModal: React.FC<AiMatchModalProps> = ({ pet, onClose }) => {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AiEvaluationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (!pet) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+
+    const payload = {
+      homeType,
+      hasYard,
+      hoursAlonePerDay: Number(hoursAlonePerDay),
+      hasOtherPets,
+      childrenAtHome,
+      experienceWithPets,
+      additionalNotes,
+      petData: {
+        name: pet.name,
+        species: pet.species,
+        size: pet.size,
+        energyLevel: pet.energyLevel,
+        description: pet.description,
+      },
+    };
 
     try {
-      const res = await api.post(`/adoptions/${pet.id}/apply`, {
-        homeType,
-        hasYard,
-        hoursAlonePerDay: Number(hoursAlonePerDay),
-        hasOtherPets,
-        childrenAtHome,
-        experienceWithPets,
-        additionalNotes,
-      });
+      // Ejecución real del evaluador de compatibilidad con Gemini AI en el Backend
+      const res = await api.post(`/adoptions/${pet.id}/evaluate`, payload);
 
       if (res.data) {
         setResult({
-          score: res.data.aiCompatibilityScore || 88,
-          analysis: res.data.aiAnalysisReport || 'El perfil es ideal para el bienestar de la mascota.',
-          isRecommended: (res.data.aiCompatibilityScore || 88) >= 70,
+          score: res.data.score,
+          analysis: res.data.analysis,
+          isRecommended: res.data.isRecommended,
         });
       }
-    } catch {
-      // Motor determinístico local de respaldo
-      let score = 75;
-      if (hoursAlonePerDay > 7) score -= 20;
-      else if (hoursAlonePerDay <= 4) score += 10;
-      if (pet.energyLevel === 'HIGH' && hasYard) score += 15;
-      if (experienceWithPets.length > 20) score += 5;
-      const finalScore = Math.min(100, Math.max(20, score));
 
-      setResult({
-        score: finalScore,
-        analysis: finalScore >= 70
-          ? `Tu estilo de vida y el espacio en tu hogar armonizan notablemente con ${pet.name}. La disponibilidad para compartir tiempo y paseos garantizará una adaptación rápida y llena de afecto.`
-          : `Notamos que ${pet.name} tiene requerimientos de actividad altos o que las horas en soledad podrían generar ansiedad por separación. Recomendamos una entrevista previa con nuestro equipo veterinario.`,
-        isRecommended: finalScore >= 70,
-      });
+      // Si el usuario tiene sesión activa, registrar también la postulación formal en la base de datos
+      const token = localStorage.getItem('mosqueteros_token');
+      if (token && token !== 'demo_token') {
+        try {
+          await api.post(`/adoptions/${pet.id}/apply`, payload);
+        } catch {
+          // Si el guardado en BD falla pero la evaluación de IA ya fue exitosa, no interrumpir la experiencia
+        }
+      }
+    } catch (err: any) {
+      console.error('Error al evaluar en backend:', err);
+      setError(
+        err.response?.data?.message ||
+          'No se pudo conectar con el servicio de IA del backend. Verifica que el servidor backend esté en ejecución.'
+      );
     } finally {
       setLoading(false);
     }
@@ -96,6 +108,13 @@ export const AiMatchModal: React.FC<AiMatchModalProps> = ({ pet, onClose }) => {
         </div>
 
         {/* Form or Result */}
+        {error && (
+          <div className="mt-4 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2.5 font-medium animate-fade-in">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-600" />
+            <span>{error}</span>
+          </div>
+        )}
+
         {!result ? (
           <form onSubmit={handleSubmit} className="mt-6 space-y-5">
             <div>

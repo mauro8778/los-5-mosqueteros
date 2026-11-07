@@ -11,6 +11,32 @@ export class AdoptionsService {
     private aiMatch: AiMatchService,
   ) {}
 
+  async evaluateCompatibilityOnly(petId: string, dto: CreateApplicationDto) {
+    let pet: any = null;
+    try {
+      pet = await this.prisma.pet.findUnique({ where: { id: petId } });
+    } catch {
+      // Si la BD no está disponible, usamos datos enviados o por defecto
+    }
+
+    const petData = dto.petData;
+    const petProfile = pet || petData || {
+      name: 'Mascota',
+      species: 'DOG',
+      size: 'MEDIUM',
+      energyLevel: 'MEDIUM',
+      description: 'Mascota en adopción responsable.',
+    };
+
+    return this.aiMatch.evaluateCompatibility(dto, {
+      name: petProfile.name,
+      species: petProfile.species || 'DOG',
+      size: petProfile.size || 'MEDIUM',
+      energyLevel: petProfile.energyLevel || 'MEDIUM',
+      description: petProfile.description || 'Mascota en proceso de adopción.',
+    });
+  }
+
   async submitApplication(petId: string, userId: string, dto: CreateApplicationDto) {
     const pet = await this.prisma.pet.findUnique({ where: { id: petId } });
     if (!pet) {

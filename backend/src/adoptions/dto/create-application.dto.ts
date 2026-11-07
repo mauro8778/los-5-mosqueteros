@@ -34,4 +34,14 @@ export class CreateApplicationDto {
   @IsOptional()
   @IsString()
   additionalNotes?: string;
+
+  @ApiProperty({ required: false, description: 'Datos de la mascota para evaluación IA' })
+  @IsOptional()
+  petData?: {
+    name?: string;
+    species?: string;
+    size?: string;
+    energyLevel?: string;
+    description?: string;
+  };
 }
